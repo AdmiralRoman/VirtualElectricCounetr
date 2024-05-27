@@ -86,8 +86,7 @@ int main(int argc, char *argv[])
         {
             
             printf("Bytes received: %d\n", bytesReceived);
-            for (auto i : buf)
-                std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)i << " ";
+            for (auto i : buf) std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)i << " ";
             std::cout << std::endl;
             Handling hand;
             CRC crc;
@@ -95,18 +94,12 @@ int main(int argc, char *argv[])
             hand.switchRule(buf);
             crc.Crc16(sendbuf);
             crc.retCrc(sendbuf);
-            for (auto i : sendbuf)
-                std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)i << " ";
-            std::cout << std::endl;
-
-                
             int iSendResult = send(clientSocket, & sendbuf[0], sendbuf.size(), 0);
+            for (auto i : sendbuf) std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)i << " ";
+            std::cout << std::endl;
+            printf("Bytes received: %d\n", bytesReceived);
             sendbuf.clear();
         }
-
-
-
-
         if (bytesReceived == -1)
         {
             std::cerr << "Error in recv(). Quitting" << std::endl;
