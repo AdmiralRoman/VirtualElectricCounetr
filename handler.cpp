@@ -260,7 +260,7 @@ void Handling::getParamsEC(const std::vector<uint8_t>& procVector) {
 }
 
 void Handling::getCrc() {
-    std::vector<uint8_t> tempVec;
+    std::vector<uint8_t> tempVec{};
     writeIntToVectorCol(dataBase.readDataInt("ver"), 3, tempVec);
     CRC crc;
     crc.Crc16(tempVec);
