@@ -4,27 +4,36 @@ using json = nlohmann::json;
 std::vector <uint8_t> sendbuf;
 
 DataBase::DataBase() {
-    std::cout << "loading database" << std::endl;
+	json data;
     std::ifstream f("in.json");
-    json data = json::parse(f);
+	if (!f.is_open()) {
+        throw std::runtime_error("Unable to open file");
+    }
+	try {
+    data = json::parse(f);
+	} catch (json::parse_error& e)
+	{
+		throw std::runtime_error("JSON parsing error: " + std::string(e.what()));
+	}
     valueEC = data.at("params");
     vvalue = data.at("values");
-    std::cout << "database ready" << std::endl;
+	f.close();
 }
 
-int DataBase::readData(std::string mapKey) const {
+int DataBase::readDataInt(const std::string& mapKey) const {
     auto found = valueEC.find(mapKey);
     auto lValue = 0;
     if (found != valueEC.end()) lValue = found->second;
     return lValue;
 }
 
-std::array<int,4> DataBase::inputData(std::string mapKey) {
+std::array<int,4> DataBase::readDataArray(const std::string& mapKey) const {
     auto found = vvalue.find(mapKey);
     std::array<int,4> lString;
     if (found != vvalue.end()) lString = found->second;
     return lString;
 }
+
 
 
 CRC::CRC():
@@ -71,38 +80,36 @@ CRC::CRC():
     0x40
 
     },
-    checkCrc{ false },
-    uchCRCLo{ 0xFF },
-    uchCRCHi{ 0xFF }
-{}
+    checkCrc(false),
+    uchCRCLo(0xFF),
+    uchCRCHi(0xFF) {}
    
-void CRC::Crc16(std::vector<unsigned char>& crcSum){
+void CRC::Crc16(const std::vector<unsigned char>& crcSum){
     uchCRCLo = 0xFF;
     uchCRCHi = 0xFF;
     unsigned char index;
-    for (auto i : crcSum) {
-        index = uchCRCLo ^ i;
+    for (const auto& byte : crcSum) {
+        index = uchCRCLo ^ byte;
         uchCRCLo = uchCRCHi ^ auchCRCHi[index];
         uchCRCHi = auchCRCLo[index];
     }
 }
 
-void CRC::retCrc(std::vector<unsigned char>& crcSum) {
+void CRC::retCrc(std::vector<unsigned char>& crcSum) const {
     crcSum.push_back(uchCRCLo);
     crcSum.push_back(uchCRCHi);
 }
 
 
 
-void CRC::testCrc() {
-    std::cout << std::hex << (int)uchCRCLo << std::endl;
-    std::cout << std::hex << (int)uchCRCHi << std::endl;
+void CRC::testCrc() const {
+    std::cout << std::hex << static_cast<int> (uchCRCLo) << std::endl;
+    std::cout << std::hex << static_cast<int> (uchCRCHi) << std::endl;
     
 }
 
 DataBase dataBase;
-
-uint8_t adr = dataBase.readData("adr");
+uint8_t adr = dataBase.readDataInt("adr");
 
 int myPow(int x, int p) 
 {
@@ -121,10 +128,11 @@ void varIsp() //EC model settings
 	sendbuf.push_back(0x58);
 }
 
-bool Handling::checkAdr(std::vector<uint8_t>& procVector) 
+bool Handling::checkAdr(const std::vector<uint8_t>& procVector) 
 {
-		if ((int)procVector[0] != adr) {
-		//closesocket
+	int tempAdr = static_cast<int> (procVector[0]);
+	if ( tempAdr != adr || tempAdr != 0) 
+	{
 		return false;
 	}
 	sendbuf.push_back(adr);
@@ -133,153 +141,24 @@ bool Handling::checkAdr(std::vector<uint8_t>& procVector)
 
 void Handling::switchRule(std::vector<uint8_t>& procVector) 
 {
-	paramRead = (int)procVector[1];
+	paramRead = static_cast<int> (procVector[1]);
 	switch (paramRead)
 	{
 		case 0: //test  connection
-			sendbuf.push_back(0x00);
-			break;
 		case 1: //open connection
-			sendbuf.push_back(0x00);
-			break;
 		case 2: //close connection
-			sendbuf.push_back(0x00);
-			break;
 		case 3:
 			sendbuf.push_back(0x00);
 			break;
-		
 		case 5: //get energy values "all time"
-		{
-			auto key = std::to_string((int)procVector[2]) + std::to_string((int)procVector[3]);
-			arrayToIntVector(key,4);
-			for (auto i : tempVector)
-			{
-				writeIntToVector(i, 4, sendbuf);
-			}
-			tempVector.clear();
-			key.clear();
+			getValuesFromArray(2,3,procVector);
 			break;
-		}
 		case 6: //get energy values "month" "yesterday"
-		{
-			auto key = std::to_string((int)procVector[3]) + std::to_string((int)procVector[4]);
-			arrayToIntVector(key,4);
-			for (auto i : tempVector)
-			{
-				writeIntToVector(i, 4, sendbuf);
-			}
-			tempVector.clear();
-			key.clear();
-			break;	
-		}
-		case 8: 
-		{
-
-			switch ((int)procVector[2])
-			{
-				case 0: //serial number
-				{
-					writeIntToVectorCol(dataBase.readData("sn"), 4,sendbuf);
-					writeIntToVectorCol(dataBase.readData("date"), 3, sendbuf);
-					break;
-				}
-				case 1: //full info
-				{
-					std::cout << "all info" << std::endl;
-					writeIntToVectorCol(dataBase.readData("sn"), 4, sendbuf);
-					writeIntToVectorCol(dataBase.readData("date"), 3, sendbuf);
-					writeIntToVectorCol(dataBase.readData("ver"), 3, sendbuf);
-					varIsp();
-					std::vector<uint8_t>tempVec{};
-					writeIntToVectorCol(dataBase.readData("ver"), 3, tempVec);
-					CRC crc;
-					crc.Crc16(tempVec);
-					crc.retCrc(sendbuf);
-					writeIntToVectorCol(dataBase.readData("varI"), 3, sendbuf);
-					sendbuf.push_back(0x00);
-					sendbuf.push_back(0x00);
-					sendbuf.push_back(0x00);
-					break;
-				}
-				case 2: //coefficient
-				{
-					writeIntToVectorCol(dataBase.readData("Kn"), 2, sendbuf);
-					writeIntToVectorCol(dataBase.readData("Kt"), 2, sendbuf);
-					break;
-				}
-
-				case 3: //get version of soft
-				{
-					writeIntToVectorCol(dataBase.readData("ver"), 3,sendbuf);
-					break;
-				}
-				case 5: 
-				{
-					sendbuf.push_back(0x00);
-					sendbuf.push_back(adr);
-					break;
-				}
-				case 17: // instant values 
-				{
-					int tempHbit = (int)procVector[3] >> 4;
-					int tempLbit = (int)procVector[3] % 16;
-					std::vector<std::string>tmpVec{ "P","U","I","KP","fNo","a","Kis","tempNo","Uab","inP","inQ","inS"};
-					int tempbuf = 1;
-					int counter = 3;
-					int byte = 3;
-					if (tempHbit == 0)
-					{
-						counter = 4;
-						if (tempLbit > 7)
-						{
-							tempHbit = 11;
-							tempbuf = 8;
-						}
-						if (tempLbit > 3 && tempLbit < 8)
-						{
-							tempHbit = 10;
-							tempbuf = 4;
-						}
-						if (tempLbit < 4) 
-						{
-							tempHbit = 9;
-							tempbuf = 0;
-						}
-
-					}
-					if (tempHbit == 6 || tempHbit == 7) byte = 2;
-					if (tempHbit == 3) 
-					{
-						counter = 4;
-						tempbuf = 0;
-					}
-					if (tempHbit != 0)
-					{
-						arrayToIntVector(tmpVec[tempHbit],counter);
-						writeIntToVector(tempVector[tempLbit-tempbuf], byte, sendbuf);
-						tempVector.clear();
-					}
-					break;
-				}
-				case 18: //model parametres
-				{
-					varIsp();
-					break;
-				}
-				case 38: //crc of soft version
-				{
-					std::cout << "crc soft" << std::endl;
-					std::vector<uint8_t>tempVec{};
-					writeIntToVectorCol(dataBase.readData("ver"), 3, tempVec);
-					CRC crc;
-					crc.Crc16(tempVec);
-					crc.retCrc(sendbuf);
-					break;
-				}
-				}
+			getValuesFromArray(3,4,procVector);
 			break;
-		}
+		case 8: 
+			getParamsEC(procVector);
+			break;
 		default:
 			break;
 
@@ -300,8 +179,8 @@ void Handling::writeIntToVector(int valueDB,int bytesLen, std::vector<uint8_t>& 
 		std::swap(tmpVector[0], tmpVector[1]);
 		std::swap(tmpVector[2], tmpVector[3]);
 	}
-	if (bytesLen == 2) std::swap(tmpVector[0], tmpVector[1]);
-	if (bytesLen == 3) std::swap(tmpVector[1], tmpVector[2]);
+	else if (bytesLen == 2) std::swap(tmpVector[0], tmpVector[1]);
+	else if (bytesLen == 3) std::swap(tmpVector[1], tmpVector[2]);
 	
 	for (auto i : tmpVector) lastVector.push_back(i);	
 }
@@ -317,13 +196,121 @@ void Handling::writeIntToVectorCol(int valueDB, int bytesLen, std::vector<uint8_
 	}
 }
 
-void Handling::arrayToIntVector(std::string mapKey,int size) 	
+void Handling::arrayToIntVector(const std::string &mapKey,int size) 	
 {
 	std::array<int,4> tmp;
-	tmp = dataBase.inputData(mapKey);
+	tmp = dataBase.readDataArray(mapKey);
 	for (int i = 0;i<size; i++)
 	{
 			tempVector.push_back(tmp[i]);
 	}
 }
 
+void Handling::getValuesFromArray(int arg1,int arg2,std::vector<uint8_t>&lastVector)
+{
+	std::string key = std::to_string(static_cast<int> (lastVector[arg1])) + std::to_string(static_cast<int> (lastVector[arg2]));
+	arrayToIntVector(key,4);
+	for (auto i : tempVector)
+	{
+		writeIntToVector(i, 4, sendbuf);
+	}
+	tempVector.clear();
+	key.clear();
+}
+
+void Handling::getParamsEC(const std::vector<uint8_t>& procVector) {
+    switch (static_cast<int>(procVector[2])) 
+	{
+        case 0:
+            writeIntToVectorCol(dataBase.readDataInt("sn"), 4, sendbuf);
+            writeIntToVectorCol(dataBase.readDataInt("date"), 3, sendbuf);
+            break;
+        case 1:
+            writeIntToVectorCol(dataBase.readDataInt("sn"), 4, sendbuf);
+            writeIntToVectorCol(dataBase.readDataInt("date"), 3, sendbuf);
+            writeIntToVectorCol(dataBase.readDataInt("ver"), 3, sendbuf);
+            varIsp();
+            getCrc();
+            writeIntToVectorCol(dataBase.readDataInt("varI"), 3, sendbuf);
+            sendbuf.insert(sendbuf.end(), {0x00, 0x00, 0x00});
+            break;
+        case 2:
+            writeIntToVectorCol(dataBase.readDataInt("Kn"), 2, sendbuf);
+            writeIntToVectorCol(dataBase.readDataInt("Kt"), 2, sendbuf);
+            break;
+        case 3:
+            writeIntToVectorCol(dataBase.readDataInt("ver"), 3, sendbuf);
+            break;
+        case 5:
+            sendbuf.push_back(0x00);
+            sendbuf.push_back(adr);
+            break;
+        case 17:
+            getInstantValues(procVector);
+            break;
+        case 18:
+            varIsp();
+            break;
+        case 38:
+            getCrc();
+            break;
+        default:
+            break;
+    }
+}
+
+void Handling::getCrc() {
+    std::vector<uint8_t> tempVec;
+    writeIntToVectorCol(dataBase.readDataInt("ver"), 3, tempVec);
+    CRC crc;
+    crc.Crc16(tempVec);
+    crc.retCrc(sendbuf);
+}
+
+void Handling::getInstantValues(const std::vector<uint8_t>& procVector) {
+    int tempHbit = static_cast<int>(procVector[3]) >> 4;
+    int tempLbit = static_cast<int>(procVector[3]) % 16;
+    std::vector<std::string> tmpVec{"P", "U", "I", "KP", "f", "a", "Kis", "t", "Uab", "inP", "inQ", "inS"};
+    int tempbuf = 1; 
+    int counter = 3; //size of value of array in byte
+    int byte = 3; //size if value in sendbuf in byte
+
+    if (tempHbit == 0) {
+        counter = 4;
+        {
+			tempHbit = 11;
+			tempbuf = 8;
+		}
+		if (tempLbit > 3 && tempLbit < 8)
+		{
+			tempHbit = 10;
+			tempbuf = 4;
+		}
+		if (tempLbit < 4) 
+		{
+			tempHbit = 9;
+			tempbuf = 0;
+		}
+    }
+    if (tempHbit == 6) byte = 2;
+    if (tempHbit == 4) tempbuf = 0;    
+    if (tempHbit == 3) 
+    {
+        counter = 4;
+        tempbuf = 0;
+    }
+    if (tempHbit != 0 && tempHbit != 7) 
+    {
+        arrayToIntVector(tmpVec[tempHbit], counter);
+		writeIntToVector(tempVector[tempLbit-tempbuf], byte, sendbuf);
+		tempVector.clear();
+    }
+
+    if (tempHbit == 7) //fixing bug of configurator programm with temperature
+    {
+        byte = 2;
+        arrayToIntVector(tmpVec[tempHbit], counter);
+        writeIntToVectorCol(tempVector[tempLbit], byte, sendbuf);
+		tempVector.clear();
+    }
+}
