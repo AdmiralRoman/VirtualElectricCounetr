@@ -22,9 +22,9 @@ DataBase::DataBase() {
 
 int DataBase::readDataInt(const std::string& mapKey) const {
     auto found = valueEC.find(mapKey);
-    auto lValue = 0;
-    if (found != valueEC.end()) lValue = found->second;
-    return lValue;
+    auto value = 0;
+    if (found != valueEC.end()) value = found->second;
+    return value;
 }
 
 std::array<int,4> DataBase::readDataArray(const std::string& mapKey) const {
@@ -198,7 +198,7 @@ void Handling::writeIntToVectorCol(int valueDB, int bytesLen, std::vector<uint8_
 
 void Handling::arrayToIntVector(const std::string &mapKey,int size) 	
 {
-	std::array<int,4> tmp;
+	std::array<int,4> tmp{};
 	tmp = dataBase.readDataArray(mapKey);
 	for (int i = 0;i<size; i++)
 	{
