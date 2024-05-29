@@ -128,7 +128,7 @@ void varIsp() //EC model settings
 	sendbuf.push_back(0x58);
 }
 
-bool Handling::checkAdr(const std::vector<uint8_t>& procVector) 
+bool Handling::checkAdr(const std::vector<uint8_t>& procVector) const 
 {
 	int tempAdr = static_cast<int> (procVector[0]);
 	if ( tempAdr != adr || tempAdr != 0) 
@@ -139,7 +139,7 @@ bool Handling::checkAdr(const std::vector<uint8_t>& procVector)
 	return true;
 }
 
-void Handling::switchRule(std::vector<uint8_t>& procVector) 
+void Handling::switchRule(const std::vector<uint8_t>& procVector) 
 {
 	paramRead = static_cast<int> (procVector[1]);
 	switch (paramRead)
@@ -165,7 +165,7 @@ void Handling::switchRule(std::vector<uint8_t>& procVector)
 	}
 }
 
-void Handling::writeIntToVector(int valueDB,int bytesLen, std::vector<uint8_t>& lastVector) 
+void Handling::writeIntToVector(int &valueDB,const int bytesLen, std::vector<uint8_t>& lastVector) const 
 {
 	std::vector<uint8_t> tmpVector;
 
@@ -185,14 +185,15 @@ void Handling::writeIntToVector(int valueDB,int bytesLen, std::vector<uint8_t>& 
 	for (auto i : tmpVector) lastVector.push_back(i);	
 }
 
-void Handling::writeIntToVectorCol(int valueDB, int bytesLen, std::vector<uint8_t>&lastVector) 
+void Handling::writeIntToVectorCol(int valueDB, int bytesLen, std::vector<uint8_t>&lastVector) const 
 {
-	bytesLen--;
-	for (bytesLen; bytesLen >= 0; bytesLen--)
+	int i = 0;
+    i = bytesLen-1;
+	for (i; i >= 0; i--)
 	{
-		int tmp = valueDB / myPow(100,bytesLen);
+		int tmp = valueDB / myPow(100,i);
 		lastVector.push_back(tmp & 0xFF);
-		valueDB = valueDB % myPow(100, bytesLen);
+		valueDB = valueDB % myPow(100,i);
 	}
 }
 
@@ -206,7 +207,7 @@ void Handling::arrayToIntVector(const std::string &mapKey,int size)
 	}
 }
 
-void Handling::getValuesFromArray(int arg1,int arg2,std::vector<uint8_t>&lastVector)
+void Handling::getValuesFromArray(const int arg1,const int arg2,const std::vector<uint8_t>&lastVector)
 {
 	std::string key = std::to_string(static_cast<int> (lastVector[arg1])) + std::to_string(static_cast<int> (lastVector[arg2]));
 	arrayToIntVector(key,4);
@@ -259,7 +260,7 @@ void Handling::getParamsEC(const std::vector<uint8_t>& procVector) {
     }
 }
 
-void Handling::getCrc() {
+void Handling::getCrc() const {
     std::vector<uint8_t> tempVec{};
     writeIntToVectorCol(dataBase.readDataInt("ver"), 3, tempVec);
     CRC crc;

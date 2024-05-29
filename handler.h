@@ -49,17 +49,17 @@ class Handling
 
 public:
 	Handling() : paramRead{ 256 } {}
-	void switchRule(std::vector<uint8_t>& procVector);
-	bool checkAdr(const std::vector<uint8_t>& procVector);
-	void writeIntToVector(int valueDB, int bytesLen, std::vector<uint8_t>& lastVector);
-	void writeIntToVectorCol(int valueDB, int bytesLen, std::vector<uint8_t>& lastVector);
-	void arrayToIntVector(const std::string &mapKey,int size);
-    void getValuesFromArray(int arg1,int arg2,std::vector<uint8_t>&procVector);
+	void switchRule(const std::vector<uint8_t>& procVector);
+	bool checkAdr(const std::vector<uint8_t>& procVector) const;
+	void writeIntToVector(int &valueDB,const int bytesLen, std::vector<uint8_t>& lastVector) const;
+	void writeIntToVectorCol(int valueDB,int bytesLen, std::vector<uint8_t>& lastVector) const;
+	void arrayToIntVector(const std::string &mapKey,const int size);
+    void getValuesFromArray(const int arg1,const int arg2,const std::vector<uint8_t>&procVector);
     void getParamsEC(const std::vector<uint8_t>& procVector);
-    void getCrc();
+    void getCrc() const;
     void getInstantValues(const std::vector<uint8_t>& procVector);
 private:
-	int paramRead; //ruleswitcher helper
+	int paramRead{0}; //ruleswitcher helper
 	std::vector<int>tempVector;
 
 };
