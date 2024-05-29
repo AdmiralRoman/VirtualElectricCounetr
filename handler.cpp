@@ -22,16 +22,16 @@ DataBase::DataBase() {
 
 int DataBase::readDataInt(const std::string& mapKey) const {
     auto found = valueEC.find(mapKey);
-    auto value = 0;
+    int value = 0;
     if (found != valueEC.end()) value = found->second;
     return value;
 }
 
 std::array<int,4> DataBase::readDataArray(const std::string& mapKey) const {
     auto found = vvalue.find(mapKey);
-    std::array<int,4> lString;
-    if (found != vvalue.end()) lString = found->second;
-    return lString;
+    std::array<int,4> arrayValue{};
+    if (found != vvalue.end()) arrayValue = found->second;
+    return arrayValue;
 }
 
 
