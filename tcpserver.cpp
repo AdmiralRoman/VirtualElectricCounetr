@@ -55,8 +55,8 @@ int main(int argc, char *argv[])
     int clientSocket{};
     clientSocket = accept(listening, (sockaddr*)&client, &clientSize);
 
-    char host[NI_MAXHOST] = {'\0'};      // Client's remote name
-    char service[NI_MAXSERV] = {'\0'};   // Service (i.e. port) the client is connect on
+    char host[NI_MAXHOST] = {0};      // Client's remote name
+    char service[NI_MAXSERV] = {0};   // Service (i.e. port) the client is connect on
  
     memset(host, 0, NI_MAXHOST); 
     memset(service, 0, NI_MAXSERV);
