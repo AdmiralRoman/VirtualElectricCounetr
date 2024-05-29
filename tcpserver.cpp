@@ -28,7 +28,8 @@ int main(int argc, char *argv[])
         return -1;
     }
     // Create a socket
-    int listening = socket(AF_INET, SOCK_STREAM, 0);
+    int listening {};
+    listening = socket(AF_INET, SOCK_STREAM, 0);
     if (listening == -1)
     {
         std::cerr << "Can't create a socket! Quitting" << std::endl;
@@ -51,13 +52,13 @@ int main(int argc, char *argv[])
     // Wait for a connection
     sockaddr_in client;
     socklen_t clientSize = sizeof(client);
- 
-    int clientSocket = accept(listening, (sockaddr*)&client, &clientSize);
+    int clientSocket{};
+    clientSocket = accept(listening, (sockaddr*)&client, &clientSize);
 
-    char host[NI_MAXHOST];      // Client's remote name
-    char service[NI_MAXSERV];   // Service (i.e. port) the client is connect on
+    char host[NI_MAXHOST] = {'\0'};;      // Client's remote name
+    char service[NI_MAXSERV] = {'\0'};   // Service (i.e. port) the client is connect on
  
-    memset(host, 0, NI_MAXHOST); // same as memset(host, 0, NI_MAXHOST);
+    memset(host, 0, NI_MAXHOST); 
     memset(service, 0, NI_MAXSERV);
  
     if (getnameinfo((sockaddr*)&client, sizeof(client), host, NI_MAXHOST, service, NI_MAXSERV, 0) == 0)
@@ -80,34 +81,31 @@ int main(int argc, char *argv[])
     while (true)
     {
         //memset(&buf, 0, 40);
-
+        int bytesReceived{};
         // Wait for client to send data
-        int bytesReceived = recv(clientSocket, &buf[0], buf.size(), 0);
+        bytesReceived = recv(clientSocket, &buf[0], buf.size(), 0);
         if (bytesReceived > 1)
         {
             Handling hand;
             status = hand.checkAdr(buf);
             if (!status) 
             {
-                return -1;
                 std::cerr << "Wrong address";
+                return -1;
             }
             printf("Bytes received: %d\n :", bytesReceived);
             for (int i = 0;i<bytesReceived;i++) 
                 std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int> (buf[i]) << " ";
             std::cout << std::endl;
-            
             CRC crc;
-            
             hand.switchRule(buf);
             crc.Crc16(sendbuf);
             crc.retCrc(sendbuf);
-            
-            
-            printf("Bytes send: %d :\n", bytesReceived);
+            int iSendResult{};
+            iSendResult = send(clientSocket, &sendbuf[0], sendbuf.size(), 0);
+            printf("Bytes send: %d :\n", iSendResult);
             for (auto i : sendbuf) std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int> (i) << " ";
             std::cout << std::endl;
-            int iSendResult = send(clientSocket, &sendbuf[0], sendbuf.size(), 0);
             sendbuf.clear();
         }
         if (bytesReceived == -1)
